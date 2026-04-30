@@ -18,6 +18,13 @@ const CallControls = ({
 
   return (
     <div className="call-controls">
+      <div className="control-helper-text">
+        {canStart && 'Tap Start Call, then speak naturally to book or manage appointments.'}
+        {callStatus === 'connecting' && 'Preparing voice connection...'}
+        {callStatus === 'connected' && 'You can mute anytime while the assistant continues processing.'}
+        {callStatus === 'ending' && 'Generating end-of-call summary...'}
+      </div>
+
       {canStart && (
         <input
           className="name-input"
@@ -71,29 +78,36 @@ const CallControls = ({
           gap: 12px;
           width: 100%;
         }
+        .control-helper-text {
+          font-size: var(--text-sm);
+          color: var(--color-text-secondary);
+          min-height: 18px;
+        }
         .name-input {
           width: 100%;
           padding: 12px 16px;
-          background: #1a1a26;
-          border: 1px solid #2a2a3a;
-          border-radius: 10px;
-          color: #f0f0f0;
-          font-size: 15px;
+          background: var(--color-bg-elevated);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+          color: var(--color-text-primary);
+          font-size: var(--text-base);
           outline: none;
           box-sizing: border-box;
+          transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
         }
         .name-input:focus {
-          border-color: #4a9eff;
+          border-color: var(--color-accent);
+          box-shadow: 0 0 0 3px var(--color-accent-glow);
         }
         .btn {
           width: 100%;
-          padding: 16px;
+          padding: 14px 24px;
           border: none;
-          border-radius: 10px;
-          font-size: 16px;
-          font-weight: 600;
+          border-radius: var(--radius-md);
+          font-size: var(--text-base);
+          font-weight: var(--font-semibold);
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all var(--transition-fast);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -104,30 +118,36 @@ const CallControls = ({
           cursor: not-allowed;
         }
         .btn-start {
-          background: #1a6a3a;
+          background: linear-gradient(135deg, var(--color-accent), #7b5ea7);
           color: white;
+          box-shadow: var(--shadow-accent);
         }
         .btn-start:hover:not(:disabled) {
-          background: #2a8a4a;
+          transform: translateY(-1px);
+          box-shadow: 0 0 32px var(--color-accent-glow);
+        }
+        .btn-start:active:not(:disabled) {
+          transform: translateY(0);
         }
         .btn-end {
-          background: #1a1a26;
-          color: #ff6b6b;
-          border: 1px solid #ff6b6b;
+          background: var(--color-error-bg);
+          color: var(--color-error);
+          border: 1px solid rgba(248, 113, 113, 0.3);
           flex: 1;
         }
         .btn-end:hover {
-          background: #3a1a1a;
+          background: rgba(248, 113, 113, 0.15);
         }
         .btn-mute {
-          background: #1a1a26;
-          color: #e0e0e0;
-          border: 1px solid #2a2a3a;
+          background: var(--color-bg-elevated);
+          color: var(--color-text-primary);
+          border: 1px solid var(--color-border);
           flex: 1;
         }
         .btn-mute.muted {
-          border-color: #ff6b6b;
-          color: #ff6b6b;
+          border-color: rgba(248, 113, 113, 0.4);
+          color: var(--color-error);
+          background: var(--color-error-bg);
         }
         .btn-row {
           display: flex;
@@ -135,12 +155,14 @@ const CallControls = ({
           width: 100%;
         }
         .btn-connecting {
-          background: #1a2a4a;
-          color: #888;
+          background: var(--color-bg-elevated);
+          border: 1px solid var(--color-border);
+          color: var(--color-text-secondary);
         }
         .btn-ending {
-          background: #1a1a26;
-          color: #888;
+          background: var(--color-bg-elevated);
+          border: 1px solid var(--color-border);
+          color: var(--color-text-secondary);
         }
         .btn-spinner {
           width: 16px;
@@ -154,6 +176,11 @@ const CallControls = ({
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+          .btn-row {
+            flex-direction: column;
+          }
         }
       `}</style>
     </div>

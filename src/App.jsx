@@ -93,9 +93,26 @@ function App() {
     return error;
   }, [dismissedError, error]);
 
+  const backendLabel =
+    healthStatus === 'checking'
+      ? 'Backend checking'
+      : healthStatus === 'online'
+        ? 'Backend online'
+        : 'Backend offline';
+
   if (appView === 'summary' && summaryData?.sessionId) {
     return (
       <div className="app">
+        <header className="app-header">
+          <div className="header-logo">
+            <svg viewBox="0 0 32 18" aria-hidden="true">
+              <circle cx="11" cy="9" r="6.5" />
+              <circle cx="20" cy="9" r="6.5" />
+            </svg>
+            <span className="header-brand">Mykare Health</span>
+          </div>
+          <span className={`health-pill health-${healthStatus}`}>{backendLabel}</span>
+        </header>
         <div className="summary-view">
           <CallSummary
             sessionId={summaryData.sessionId}
@@ -108,20 +125,78 @@ function App() {
         </div>
         <style>{`
           .app {
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            background: #0a0a0f;
-            color: #f0f0f0;
-            font-family: system-ui, sans-serif;
+            background: var(--color-bg-base);
+            color: var(--color-text-primary);
+            font-family: var(--font-sans);
+            overflow: hidden;
+          }
+          .app-header {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--space-6);
+            background: rgba(8, 8, 16, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+            z-index: 10;
+          }
+          .header-logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+          }
+          .header-logo svg {
+            width: 32px;
+            height: 18px;
+            color: var(--color-accent);
+            opacity: 0.9;
+          }
+          .header-brand {
+            font-size: var(--text-lg);
+            font-weight: var(--font-bold);
+            color: var(--color-text-primary);
+            letter-spacing: -0.4px;
+          }
+          .health-pill {
+            border-radius: var(--radius-full);
+            padding: var(--space-1) var(--space-3);
+            font-size: var(--text-xs);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+            white-space: nowrap;
+          }
+          .health-online {
+            color: var(--color-success);
+            background: var(--color-success-bg);
+            border-color: rgba(52, 211, 153, 0.3);
+          }
+          .health-offline {
+            color: var(--color-error);
+            background: var(--color-error-bg);
+            border-color: rgba(248, 113, 113, 0.3);
+          }
+          .health-checking {
+            color: var(--color-warning);
+            background: var(--color-warning-bg);
+            border-color: rgba(251, 191, 36, 0.3);
           }
           .summary-view {
             flex: 1;
             display: flex;
             align-items: flex-start;
             justify-content: center;
-            padding: 32px 16px;
+            padding: var(--space-8) var(--space-6);
             overflow-y: auto;
+            animation: summary-fade var(--transition-slow);
+          }
+          @keyframes summary-fade {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
           }
         `}</style>
       </div>
@@ -131,34 +206,38 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-brand">Mykare Health</div>
+        <div className="header-logo">
+          <svg viewBox="0 0 32 18" aria-hidden="true">
+            <circle cx="11" cy="9" r="6.5" />
+            <circle cx="20" cy="9" r="6.5" />
+          </svg>
+          <span className="header-brand">Mykare Health</span>
+        </div>
         <div className="header-right">
+          <span className={`health-pill health-${healthStatus}`}>{backendLabel}</span>
           {(callStatus === 'connected' || callStatus === 'ending') && (
             <span className="call-timer">{formatDuration(callDuration)}</span>
           )}
-          <span className={`status-badge status-${healthStatus}`}>
-            {healthStatus === 'checking' && 'Backend: Checking...'}
-            {healthStatus === 'online' && 'Backend: Online ✅'}
-            {healthStatus === 'offline' && 'Backend: Offline ❌'}
-          </span>
         </div>
       </header>
 
-      {visibleError && (
-        <div className="error-banner">
-          <span>{visibleError}</span>
-          <button
-            type="button"
-            className="error-dismiss"
-            onClick={() => {
-              setDismissedError(error);
-              clearError();
-            }}
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <div className={`error-banner-wrap ${visibleError ? 'visible' : ''}`}>
+        {visibleError && (
+          <div className="error-banner">
+            <span>{visibleError}</span>
+            <button
+              type="button"
+              className="error-dismiss"
+              onClick={() => {
+                setDismissedError(error);
+                clearError();
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
 
       <main
         className="app-main"
@@ -168,6 +247,7 @@ function App() {
         <section className="avatar-column">
           <AvatarDisplay
             isCallActive={callStatus === 'connected'}
+            isAgentSpeaking={isAgentSpeaking}
             sessionId={sessionId}
             onAvatarReady={() => console.log('Avatar ready')}
           />
@@ -176,8 +256,10 @@ function App() {
         <aside className="panel-column">
           <ToolCallPanel toolEvents={toolEvents} isCallActive={isConnected} />
         </aside>
+      </main>
 
-        <footer className="app-footer">
+      <footer className="app-footer">
+        <div className="controls-wrapper">
           <CallControls
             callStatus={callStatus}
             isMicActive={isMicActive}
@@ -192,133 +274,152 @@ function App() {
             }}
             onToggleMic={toggleMic}
           />
-        </footer>
-      </main>
+        </div>
+      </footer>
 
       <style>{`
         .app {
-          min-height: 100vh;
+          height: 100vh;
           display: flex;
           flex-direction: column;
-          background: #0a0a0f;
-          color: #f0f0f0;
-          font-family: system-ui, sans-serif;
+          background: var(--color-bg-base);
+          color: var(--color-text-primary);
+          font-family: var(--font-sans);
+          overflow: hidden;
         }
         .app-header {
+          height: 56px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 24px;
-          background: #0f0f17;
-          border-bottom: 1px solid #1a1a26;
+          padding: 0 var(--space-6);
+          background: rgba(8, 8, 16, 0.8);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid var(--color-border);
           flex-shrink: 0;
+          z-index: 10;
+        }
+        .header-logo {
+          display: flex;
+          align-items: center;
+          gap: var(--space-3);
+        }
+        .header-logo svg {
+          width: 32px;
+          height: 18px;
+          color: var(--color-accent);
+          opacity: 0.9;
         }
         .header-brand {
-          font-size: 18px;
-          font-weight: 700;
-          color: #f0f0f0;
-          letter-spacing: -0.3px;
+          font-size: var(--text-lg);
+          font-weight: var(--font-bold);
+          color: var(--color-text-primary);
+          letter-spacing: -0.4px;
         }
         .header-right {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: var(--space-3);
         }
-        .status-badge {
-          font-size: 13px;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-weight: 500;
+        .health-pill {
+          border-radius: var(--radius-full);
+          padding: var(--space-1) var(--space-3);
+          font-size: var(--text-xs);
+          border: 1px solid var(--color-border);
+          color: var(--color-text-secondary);
+          white-space: nowrap;
         }
-        .status-online {
-          background: #1a4a2a;
-          color: #4aff8a;
+        .health-online {
+          color: var(--color-success);
+          background: var(--color-success-bg);
+          border-color: rgba(52, 211, 153, 0.3);
         }
-        .status-offline {
-          background: #3a1a1a;
-          color: #ff6b6b;
+        .health-offline {
+          color: var(--color-error);
+          background: var(--color-error-bg);
+          border-color: rgba(248, 113, 113, 0.3);
         }
-        .status-checking {
-          background: #2a2a2a;
-          color: #888;
+        .health-checking {
+          color: var(--color-warning);
+          background: var(--color-warning-bg);
+          border-color: rgba(251, 191, 36, 0.3);
         }
         .call-timer {
-          font-size: 14px;
-          color: #888;
+          font-size: var(--text-xs);
+          color: var(--color-text-secondary);
           font-variant-numeric: tabular-nums;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-full);
+          padding: var(--space-1) var(--space-3);
+          font-family: var(--font-mono);
+        }
+        .error-banner-wrap {
+          height: 0;
+          overflow: hidden;
+          transition: height var(--transition-base);
+        }
+        .error-banner-wrap.visible {
+          height: 40px;
+        }
+        .error-banner {
+          height: 40px;
+          background: var(--color-error-bg);
+          color: var(--color-error);
+          border-bottom: 1px solid rgba(248, 113, 113, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 var(--space-6);
+          font-size: var(--text-sm);
+        }
+        .error-dismiss {
+          background: none;
+          border: 0;
+          color: inherit;
+          cursor: pointer;
+          font-size: var(--text-lg);
+          line-height: 1;
         }
         .app-main {
           flex: 1;
           display: grid;
-          grid-template-columns: 1fr 360px;
-          gap: 16px;
-          padding: 16px;
+          grid-template-columns: 1fr 340px;
           overflow: hidden;
-          grid-template-areas:
-            "avatar panel"
-            "footer footer";
-          grid-template-rows: minmax(0, 1fr) auto;
         }
         .avatar-column {
-          grid-area: avatar;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          min-height: 0;
+          position: relative;
           overflow: hidden;
+          background: var(--color-bg-base);
         }
         .panel-column {
-          grid-area: panel;
           display: flex;
           flex-direction: column;
-          min-height: 0;
+          border-left: 1px solid var(--color-border);
+          background: var(--color-bg-surface);
           overflow: hidden;
         }
         .app-footer {
-          grid-area: footer;
-          padding: 16px 24px;
-          background: #0f0f17;
-          border-top: 1px solid #1a1a26;
           flex-shrink: 0;
-        }
-        .error-banner {
-          background: #3a1a1a;
-          color: #ff9999;
-          padding: 12px 16px;
+          background: rgba(8, 8, 16, 0.85);
+          backdrop-filter: blur(20px);
+          border-top: 1px solid var(--color-border);
+          padding: var(--space-4) var(--space-6);
           display: flex;
-          align-items: center;
-          justify-content: space-between;
-          font-size: 14px;
-          border-bottom: 1px solid #5a2a2a;
-        }
-        .error-dismiss {
-          background: none;
-          border: none;
-          color: #ff9999;
-          cursor: pointer;
-          font-size: 18px;
-          line-height: 1;
-          padding: 0 4px;
-        }
-        .summary-view {
-          flex: 1;
-          display: flex;
-          align-items: flex-start;
           justify-content: center;
-          padding: 32px 16px;
-          overflow-y: auto;
+        }
+        .controls-wrapper {
+          width: 100%;
+          max-width: 480px;
         }
         @media (max-width: 768px) {
           .app-main {
             grid-template-columns: 1fr;
-            grid-template-rows: auto auto 1fr;
-            grid-template-areas:
-              "avatar"
-              "footer"
-              "panel";
+            grid-template-rows: 1fr auto;
           }
           .panel-column {
-            max-height: 300px;
+            border-left: none;
+            border-top: 1px solid var(--color-border);
+            max-height: 240px;
           }
         }
       `}</style>

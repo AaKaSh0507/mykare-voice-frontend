@@ -25,7 +25,6 @@ const initialStatus = 'idle';
 const useLiveKit = (options = {}) => {
   const roomRef = useRef(null);
   const audioContextRef = useRef(null);
-  const endCallRef = useRef(null);
 
   const [callStatus, setCallStatus] = useState(initialStatus);
   const [isConnected, setIsConnected] = useState(false);
@@ -189,15 +188,11 @@ const useLiveKit = (options = {}) => {
     setError(null);
   }, []);
 
-  endCallRef.current = endCall;
-
   useEffect(() => {
     return () => {
-      if (endCallRef.current) {
-        endCallRef.current();
-      }
+      endCall();
     };
-  }, []);
+  }, [endCall]);
 
   return {
     callStatus,

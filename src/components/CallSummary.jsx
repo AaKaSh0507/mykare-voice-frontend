@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { pollSummary } from '../api.js';
 
 const INTENT_STYLES = {
-  booking: { background: '#1a3a6a', color: '#4a9eff' },
-  cancellation: { background: '#3a1a1a', color: '#ff6b6b' },
-  modification: { background: '#2a1a4a', color: '#9a6aff' },
-  inquiry: { background: '#2a2a2a', color: '#888' },
-  escalation: { background: '#3a2a1a', color: '#ffaa6b' },
+  booking: { background: 'rgba(91, 110, 245, 0.2)', color: '#a8b3ff' },
+  cancellation: { background: 'var(--color-error-bg)', color: 'var(--color-error)' },
+  modification: { background: 'rgba(162, 109, 255, 0.18)', color: '#c8a7ff' },
+  inquiry: { background: 'rgba(139, 139, 168, 0.16)', color: 'var(--color-text-secondary)' },
+  escalation: { background: 'var(--color-warning-bg)', color: 'var(--color-warning)' },
 };
 
 const getOrdinalSuffix = (day) => {
@@ -101,25 +101,25 @@ const CallSummary = ({ sessionId, phone, onClose }) => {
         <style>{`
           .call-summary {
             width: 100%;
-            max-width: 480px;
+            max-width: 520px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
-            gap: 24px;
-            padding: 32px 24px;
+            gap: var(--space-6);
+            padding: var(--space-8) var(--space-6);
           }
           .loading-state {
             align-items: center;
             justify-content: center;
             min-height: 320px;
-            color: #888;
+            color: var(--color-text-secondary);
           }
           .summary-spinner {
             width: 34px;
             height: 34px;
             border-radius: 50%;
-            border: 3px solid #2a2a3a;
-            border-top-color: #4a9eff;
+            border: 3px solid var(--color-border);
+            border-top-color: var(--color-accent);
             animation: spin 0.8s linear infinite;
           }
           @keyframes spin {
@@ -142,12 +142,12 @@ const CallSummary = ({ sessionId, phone, onClose }) => {
         <style>{`
           .call-summary {
             width: 100%;
-            max-width: 480px;
+            max-width: 520px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
-            gap: 24px;
-            padding: 32px 24px;
+            gap: var(--space-6);
+            padding: var(--space-8) var(--space-6);
           }
           .error-state {
             align-items: center;
@@ -159,18 +159,18 @@ const CallSummary = ({ sessionId, phone, onClose }) => {
             font-size: 30px;
           }
           .error-message {
-            color: #ff6b6b;
+            color: var(--color-error);
           }
           .retry-btn {
             width: 100%;
             max-width: 280px;
             padding: 16px;
-            background: transparent;
-            border: 1px solid #ff6b6b;
-            border-radius: 10px;
-            color: #ff6b6b;
-            font-size: 16px;
-            font-weight: 600;
+            background: var(--color-error-bg);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            border-radius: var(--radius-md);
+            color: var(--color-error);
+            font-size: var(--text-base);
+            font-weight: var(--font-semibold);
             cursor: pointer;
           }
         `}</style>
@@ -239,45 +239,47 @@ const CallSummary = ({ sessionId, phone, onClose }) => {
       <style>{`
         .call-summary {
           width: 100%;
-          max-width: 480px;
+          max-width: 520px;
           margin: 0 auto;
           display: flex;
           flex-direction: column;
-          gap: 24px;
-          padding: 32px 24px;
+          gap: var(--space-6);
+          padding: var(--space-8) var(--space-6);
         }
         .summary-header {
           text-align: center;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 12px;
+          gap: var(--space-3);
         }
         .summary-checkmark {
-          width: 64px;
-          height: 64px;
-          background: #1a4a2a;
-          border-radius: 50%;
+          width: 72px;
+          height: 72px;
+          background: var(--color-success-bg);
+          border: 1px solid rgba(52, 211, 153, 0.3);
+          border-radius: var(--radius-full);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 28px;
+          font-size: 32px;
+          box-shadow: 0 0 24px rgba(52, 211, 153, 0.15);
         }
         .summary-title {
-          font-size: 24px;
-          font-weight: 700;
-          color: #f0f0f0;
+          font-size: var(--text-2xl);
+          font-weight: var(--font-bold);
+          color: var(--color-text-primary);
         }
         .summary-timestamp {
-          font-size: 14px;
-          color: #888;
+          font-size: var(--text-sm);
+          color: var(--color-text-secondary);
         }
         .intent-badge {
           display: inline-block;
           padding: 4px 14px;
-          border-radius: 20px;
-          font-size: 13px;
-          font-weight: 600;
+          border-radius: var(--radius-full);
+          font-size: var(--text-sm);
+          font-weight: var(--font-semibold);
           text-transform: capitalize;
         }
         .appointments-section {
@@ -286,28 +288,28 @@ const CallSummary = ({ sessionId, phone, onClose }) => {
           gap: 8px;
         }
         .section-title {
-          font-size: 12px;
+          font-size: var(--text-xs);
           text-transform: uppercase;
-          letter-spacing: 1.5px;
-          color: #555;
-          font-weight: 600;
-          margin-bottom: 4px;
+          letter-spacing: 2px;
+          color: var(--color-text-muted);
+          font-weight: var(--font-semibold);
+          margin-bottom: var(--space-3);
         }
         .appointment-card {
-          padding: 14px;
-          background: #1a1a26;
-          border-radius: 8px;
-          border: 1px solid #2a2a3a;
+          padding: var(--space-4);
+          background: var(--color-bg-elevated);
+          border-radius: var(--radius-md);
+          border: 1px solid var(--color-border);
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: var(--space-3);
         }
         .appt-icon {
           width: 32px;
           height: 32px;
           flex-shrink: 0;
-          background: #1a2a4a;
-          border-radius: 6px;
+          background: rgba(91, 110, 245, 0.16);
+          border-radius: var(--radius-sm);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -316,58 +318,61 @@ const CallSummary = ({ sessionId, phone, onClose }) => {
           flex: 1;
         }
         .appt-datetime {
-          font-size: 14px;
-          color: #e0e0e0;
-          font-weight: 500;
+          font-size: var(--text-sm);
+          color: var(--color-text-primary);
+          font-weight: var(--font-medium);
         }
         .appt-status {
-          font-size: 12px;
-          color: #888;
+          font-size: var(--text-xs);
+          color: var(--color-text-secondary);
           margin-top: 2px;
           text-transform: capitalize;
         }
         .empty-appts {
-          color: #888;
-          font-size: 13px;
+          color: var(--color-text-secondary);
+          font-size: var(--text-sm);
         }
         .stats-row {
-          display: flex;
-          gap: 16px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: var(--space-3);
         }
         .stat-item {
-          flex: 1;
-          background: #1a1a26;
-          border-radius: 8px;
-          padding: 14px;
+          background: var(--color-bg-elevated);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+          padding: var(--space-4);
           text-align: center;
         }
         .stat-label {
-          font-size: 11px;
+          font-size: var(--text-xs);
           text-transform: uppercase;
-          letter-spacing: 1px;
-          color: #555;
+          letter-spacing: 2px;
+          color: var(--color-text-muted);
           margin-bottom: 4px;
         }
         .stat-value {
-          font-size: 20px;
-          font-weight: 700;
-          color: #e0e0e0;
+          font-size: var(--text-xl);
+          font-weight: var(--font-bold);
+          color: var(--color-text-primary);
           word-break: break-word;
         }
         .new-call-btn {
           width: 100%;
-          padding: 16px;
-          background: #4a9eff;
+          padding: 14px 24px;
+          background: linear-gradient(135deg, var(--color-accent), #7b5ea7);
           border: none;
-          border-radius: 10px;
+          border-radius: var(--radius-md);
           color: white;
-          font-size: 16px;
-          font-weight: 600;
+          font-size: var(--text-base);
+          font-weight: var(--font-semibold);
           cursor: pointer;
-          transition: background 0.2s;
+          transition: all var(--transition-fast);
+          box-shadow: var(--shadow-accent);
         }
         .new-call-btn:hover {
-          background: #3a8eff;
+          transform: translateY(-1px);
+          box-shadow: 0 0 32px var(--color-accent-glow);
         }
       `}</style>
     </div>

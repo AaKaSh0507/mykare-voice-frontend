@@ -31,6 +31,12 @@ const getStatusIcon = (status) => {
   return '✅';
 };
 
+const getStatusLabel = (status) => {
+  if (status === 'in_progress') return 'In Progress';
+  if (status === 'error') return 'Failed';
+  return 'Completed';
+};
+
 const ToolCallPanel = ({ toolEvents = [], isCallActive = false }) => {
   const latestByTool = toolEvents.reduce((acc, event) => {
     const current = acc.get(event.tool);
@@ -45,6 +51,9 @@ const ToolCallPanel = ({ toolEvents = [], isCallActive = false }) => {
   const displayEvents = Array.from(latestByTool.values()).sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
+  const successfulCount = displayEvents.filter((event) => event.status === 'success').length;
+  const runningCount = displayEvents.filter((event) => event.status === 'in_progress').length;
+  const failedCount = displayEvents.filter((event) => event.status === 'error').length;
 
   const showIdle = !isCallActive && displayEvents.length === 0;
   const showWaiting = isCallActive && displayEvents.length === 0;
@@ -52,6 +61,11 @@ const ToolCallPanel = ({ toolEvents = [], isCallActive = false }) => {
   return (
     <div className="tool-call-panel">
       <h3>Tool Activity</h3>
+      <div className="activity-stats">
+        <span>Done: {successfulCount}</span>
+        <span>Running: {runningCount}</span>
+        <span>Failed: {failedCount}</span>
+      </div>
 
       {showIdle && (
         <div className="panel-empty">
@@ -68,6 +82,9 @@ const ToolCallPanel = ({ toolEvents = [], isCallActive = false }) => {
             <div className="tool-card-title">{formatToolName(event.tool)}</div>
             <div className="tool-card-message">{event.message || 'No details provided.'}</div>
           </div>
+          <div className={`tool-card-status-badge status-${event.status}`}>
+            {getStatusLabel(event.status)}
+          </div>
           <div className="tool-card-time">{formatTime(event.timestamp)}</div>
         </article>
       ))}
@@ -78,38 +95,68 @@ const ToolCallPanel = ({ toolEvents = [], isCallActive = false }) => {
           height: 100%;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 0;
           overflow-y: auto;
-          padding: 16px;
-          background: #0f0f17;
-          border-radius: 12px;
+          background: var(--color-bg-surface);
         }
         .tool-call-panel h3 {
-          font-size: 12px;
+          font-size: var(--text-xs);
           text-transform: uppercase;
-          letter-spacing: 1.5px;
-          color: #555;
-          margin-bottom: 8px;
-          font-weight: 600;
+          letter-spacing: 2px;
+          color: var(--color-text-muted);
+          font-weight: var(--font-semibold);
+          border-bottom: 1px solid var(--color-border-subtle);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 16px 16px 8px;
+        }
+        .tool-call-panel h3::before {
+          content: '';
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: ${isCallActive ? 'var(--color-success)' : 'var(--color-text-muted)'};
+          animation: ${isCallActive ? 'live-pulse 2s ease-in-out infinite' : 'none'};
+          flex-shrink: 0;
+        }
+        .activity-stats {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          padding: 10px 12px 2px;
+        }
+        .activity-stats span {
+          font-size: var(--text-xs);
+          color: var(--color-text-secondary);
+          background: var(--color-bg-elevated);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-full);
+          padding: 2px 8px;
         }
         .tool-card {
           display: flex;
           align-items: flex-start;
-          gap: 12px;
+          gap: 10px;
+          margin: 8px;
           padding: 12px;
-          border-radius: 8px;
-          background: #1a1a26;
-          border: 1px solid #2a2a3a;
-          transition: all 0.2s ease;
+          border-radius: var(--radius-md);
+          background: var(--color-bg-elevated);
+          border: 1px solid var(--color-border);
+          transition: all var(--transition-base);
+          animation: slide-in 0.2s ease;
         }
         .tool-card.success {
-          border-color: #1a4a2a;
+          border-color: rgba(52, 211, 153, 0.2);
+          background: linear-gradient(135deg, var(--color-bg-elevated), rgba(52, 211, 153, 0.03));
         }
         .tool-card.error {
-          border-color: #4a1a1a;
+          border-color: rgba(248, 113, 113, 0.2);
+          background: linear-gradient(135deg, var(--color-bg-elevated), rgba(248, 113, 113, 0.03));
         }
         .tool-card.in_progress {
-          border-color: #2a3a4a;
+          border-color: rgba(91, 110, 245, 0.3);
+          background: linear-gradient(135deg, var(--color-bg-elevated), rgba(91, 110, 245, 0.05));
         }
         .tool-card-icon {
           font-size: 18px;
@@ -121,24 +168,47 @@ const ToolCallPanel = ({ toolEvents = [], isCallActive = false }) => {
           min-width: 0;
         }
         .tool-card-title {
-          font-size: 14px;
-          font-weight: 600;
-          color: #e0e0e0;
+          font-size: var(--text-sm);
+          font-weight: var(--font-semibold);
+          color: var(--color-text-primary);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         .tool-card-message {
-          font-size: 12px;
-          color: #888;
-          margin-top: 2px;
-          line-height: 1.4;
+          font-size: var(--text-xs);
+          color: var(--color-text-secondary);
+          margin-top: 3px;
+          line-height: var(--leading-normal);
         }
         .tool-card-time {
-          font-size: 11px;
-          color: #555;
+          font-size: var(--text-xs);
+          color: var(--color-text-muted);
+          font-family: var(--font-mono);
           flex-shrink: 0;
           margin-top: 2px;
+        }
+        .tool-card-status-badge {
+          font-size: 10px;
+          font-weight: 600;
+          border-radius: 999px;
+          padding: 3px 8px;
+          margin-top: 1px;
+          flex-shrink: 0;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .tool-card-status-badge.status-success {
+          background: var(--color-success-bg);
+          color: var(--color-success);
+        }
+        .tool-card-status-badge.status-error {
+          background: var(--color-error-bg);
+          color: var(--color-error);
+        }
+        .tool-card-status-badge.status-in_progress {
+          background: rgba(91, 110, 245, 0.18);
+          color: #b8c5ff;
         }
         .tool-spinner {
           width: 18px;
@@ -158,8 +228,8 @@ const ToolCallPanel = ({ toolEvents = [], isCallActive = false }) => {
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #444;
-          font-size: 13px;
+          color: var(--color-text-muted);
+          font-size: var(--text-sm);
           text-align: center;
           padding: 24px;
         }
@@ -169,6 +239,20 @@ const ToolCallPanel = ({ toolEvents = [], isCallActive = false }) => {
         @keyframes pulse {
           0%, 100% { opacity: 0.4; }
           50% { opacity: 1; }
+        }
+        @keyframes live-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        @keyframes slide-in {
+          from {
+            transform: translateY(-8px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
         }
       `}</style>
     </div>

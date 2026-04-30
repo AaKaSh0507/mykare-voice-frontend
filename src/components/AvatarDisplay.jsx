@@ -1,80 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  AVATAR_ENV_ERROR_MESSAGE,
+  createConversation,
+  endConversation,
+} from '../services/tavus.js';
 
-const TAVUS_BASE_URL = 'https://tavusapi.com';
-const ENV_ERROR_MESSAGE =
-  'Avatar not configured. Set VITE_TAVUS_API_KEY and VITE_TAVUS_REPLICA_ID in .env';
+const getStatusText = (avatarStatus) => {
+  if (avatarStatus === 'loading') return 'Connecting...';
+  if (avatarStatus === 'error') return 'Connection failed';
+  return 'Ready to assist';
+};
 
-export async function createConversation(apiKey, replicaId, sessionId) {
-  const response = await fetch(`${TAVUS_BASE_URL}/v2/conversations`, {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      replica_id: replicaId,
-      conversation_name: `mykare-session-${sessionId}`,
-      properties: {
-        max_call_duration: 1800,
-        participant_left_timeout: 30,
-        enable_recording: false,
-      },
-    }),
-  });
+const isMissingConfig = (value) => !value || value.startsWith('PASTE_');
 
-  if (!response.ok) {
-    const bodyText = await response.text();
-    throw new Error(
-      `Failed to create Tavus conversation: ${response.status} ${bodyText}`,
-    );
-  }
-
-  return response.json();
-}
-
-export async function endConversation(apiKey, conversationId) {
-  try {
-    const response = await fetch(
-      `${TAVUS_BASE_URL}/v2/conversations/${conversationId}`,
-      {
-        method: 'DELETE',
-        headers: { 'x-api-key': apiKey },
-      },
-    );
-
-    if (response.ok || response.status === 404) {
-      return true;
-    }
-
-    const bodyText = await response.text();
-    console.error(
-      `Failed to end Tavus conversation: ${response.status} ${bodyText}`,
-    );
-    return false;
-  } catch (error) {
-    console.error('Failed to end Tavus conversation:', error);
-    return false;
-  }
-}
-
-const PersonPlaceholder = () => (
-  <>
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8" r="4" fill="currentColor" />
-      <path d="M4 21c0-4.42 3.58-8 8-8s8 3.58 8 8" fill="currentColor" />
-    </svg>
-    <div>AI Assistant</div>
-  </>
-);
-
-const AvatarDisplay = ({ isCallActive, sessionId, onAvatarReady }) => {
+const AvatarDisplay = ({ isCallActive, isAgentSpeaking, sessionId, onAvatarReady }) => {
   const [avatarStatus, setAvatarStatus] = useState('idle');
   const [conversationUrl, setConversationUrl] = useState(null);
   const [conversationId, setConversationId] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [hasTavusConfig, setHasTavusConfig] = useState(true);
   const previousCallActive = useRef(isCallActive);
 
   useEffect(() => {
+    console.log(`AvatarDisplay: isCallActive changed to ${String(isCallActive)}`);
     const wasCallActive = previousCallActive.current;
     previousCallActive.current = isCallActive;
 
@@ -85,17 +33,25 @@ const AvatarDisplay = ({ isCallActive, sessionId, onAvatarReady }) => {
       setAvatarStatus('loading');
       setErrorMessage(null);
 
-      if (!apiKey || !replicaId) {
+      if (isMissingConfig(apiKey) || isMissingConfig(replicaId)) {
+        const envWarning = `${AVATAR_ENV_ERROR_MESSAGE}. Replace placeholder values before starting a call.`;
+        console.log(`AvatarDisplay: error = ${envWarning}`);
+        setHasTavusConfig(false);
         setAvatarStatus('error');
-        setErrorMessage(ENV_ERROR_MESSAGE);
+        setErrorMessage(envWarning);
         return;
       }
 
       try {
+        setHasTavusConfig(true);
+        console.log('AvatarDisplay: creating Tavus conversation...');
         const conversation = await createConversation(apiKey, replicaId, sessionId);
+        console.log('AvatarDisplay: API response received', conversation);
+        console.log(`AvatarDisplay: conversation_url = ${conversation.conversation_url ?? ''}`);
         setConversationUrl(conversation.conversation_url ?? null);
         setConversationId(conversation.conversation_id ?? null);
       } catch (error) {
+        console.log(`AvatarDisplay: error = ${error instanceof Error ? error.message : String(error)}`);
         setAvatarStatus('error');
         setErrorMessage(error instanceof Error ? error.message : String(error));
       }
@@ -107,7 +63,7 @@ const AvatarDisplay = ({ isCallActive, sessionId, onAvatarReady }) => {
     }
 
     if (!isCallActive && wasCallActive && conversationId) {
-      if (apiKey) {
+      if (apiKey && !isMissingConfig(apiKey)) {
         endConversation(apiKey, conversationId);
       }
       setConversationUrl(null);
@@ -123,153 +79,182 @@ const AvatarDisplay = ({ isCallActive, sessionId, onAvatarReady }) => {
     previousCallActive.current = false;
   };
 
+  const showFallback = !hasTavusConfig || avatarStatus !== 'ready';
+
   const handleIframeLoad = () => {
-    setAvatarStatus('ready');
-    if (onAvatarReady) {
-      onAvatarReady();
+    if (conversationUrl && conversationUrl !== 'about:blank') {
+      setAvatarStatus('ready');
+      if (onAvatarReady) {
+        onAvatarReady();
+      }
     }
   };
 
-  const showPlaceholder =
-    avatarStatus === 'idle' || avatarStatus === 'loading' || avatarStatus === 'error';
-  const showHiddenIframe = avatarStatus === 'loading' && Boolean(conversationUrl);
-  const showVisibleIframe = avatarStatus === 'ready' && Boolean(conversationUrl);
-
   return (
     <div className="avatar-display">
-      {showPlaceholder && (
-        <div className="avatar-placeholder">
-          <PersonPlaceholder />
+      {showFallback && (
+        <div className="avatar-fallback">
+          <div className={`avatar-circle ${isAgentSpeaking ? 'speaking' : ''}`}>
+            <div className={`pulse-ring ${isAgentSpeaking ? 'active' : ''}`} />
+            <div className={`waveform ${isCallActive ? 'active' : ''}`}>
+              <span className="bar bar-1" />
+              <span className="bar bar-2" />
+              <span className="bar bar-3" />
+              <span className="bar bar-4" />
+              <span className="bar bar-5" />
+            </div>
+          </div>
+          <div className="avatar-name">Aria</div>
+          <div className="avatar-status-line">{getStatusText(avatarStatus)}</div>
+          {errorMessage && (
+            <div className="avatar-warning">
+              {errorMessage}
+              {!hasTavusConfig && (
+                <button className="avatar-retry-btn" type="button" onClick={handleRetry}>
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {avatarStatus === 'loading' && (
-        <div className="avatar-loading-overlay">
-          <div className="avatar-spinner" />
-        </div>
-      )}
-
-      {avatarStatus === 'error' && (
-        <div className="avatar-error-overlay">
-          <div>{errorMessage || 'Unable to load avatar.'}</div>
-          <button className="avatar-retry-btn" type="button" onClick={handleRetry}>
-            Retry
-          </button>
-        </div>
-      )}
-
-      {(showHiddenIframe || showVisibleIframe) && (
-        <iframe
-          src={conversationUrl}
-          allow="camera; microphone; fullscreen"
-          title="Tavus AI Avatar"
-          onLoad={handleIframeLoad}
-          style={
-            showHiddenIframe
-              ? { opacity: 0, pointerEvents: 'none' }
-              : { opacity: 1, pointerEvents: 'auto' }
-          }
-        />
-      )}
+      <iframe
+        key={conversationUrl}
+        src={conversationUrl || 'about:blank'}
+        allow="camera *; microphone *; fullscreen *; display-capture *; autoplay *"
+        title="Tavus AI Avatar"
+        style={{
+          opacity: avatarStatus === 'ready' ? 1 : 0,
+          pointerEvents: avatarStatus === 'ready' ? 'auto' : 'none',
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          transition: 'opacity var(--transition-slow)',
+        }}
+        onLoad={handleIframeLoad}
+      />
 
       <style>{`
         .avatar-display {
-          width: 100%;
-          aspect-ratio: 9 / 16;
-          background: #111118;
-          border-radius: 16px;
-          overflow: hidden;
           position: relative;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(135deg, #0a0a16 0%, #0f0f1f 50%, #0a0a16 100%);
+          overflow: hidden;
         }
-
-        @media (min-width: 768px) {
-          .avatar-display {
-            aspect-ratio: 16 / 9;
-          }
-        }
-
-        .avatar-placeholder {
+        .avatar-fallback {
+          position: absolute;
+          inset: 0;
+          z-index: 3;
           width: 100%;
           height: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 12px;
-          color: #666;
+          gap: var(--space-3);
+          padding: var(--space-6);
+          text-align: center;
         }
-
-        .avatar-placeholder svg {
-          width: 64px;
-          height: 64px;
-          opacity: 0.4;
-        }
-
-        .avatar-display iframe {
-          width: 100%;
-          height: 100%;
-          border: none;
-          display: block;
+        .avatar-circle {
+          width: 240px;
+          height: 240px;
+          border-radius: var(--radius-full);
+          border: 1px solid var(--color-border);
+          background: linear-gradient(135deg, #161630, #1e1e3f);
+          box-shadow: var(--shadow-accent);
           position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+        .pulse-ring {
+          position: absolute;
+          inset: 0;
+          border-radius: var(--radius-full);
+        }
+        .pulse-ring.active {
+          animation: pulse-ring 1.5s ease-out infinite;
+        }
+        .waveform {
+          display: flex;
+          align-items: flex-end;
+          gap: 6px;
+          height: 40px;
           z-index: 1;
         }
-
-        .avatar-loading-overlay {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(0, 0, 0, 0.4);
-          z-index: 3;
+        .bar {
+          width: 4px;
+          height: 16px;
+          border-radius: var(--radius-full);
+          background: var(--color-accent);
+          transition: height var(--transition-base);
         }
-
-        .avatar-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid rgba(255, 255, 255, 0.2);
-          border-top-color: white;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
+        .waveform.active .bar {
+          animation: waveform 1s ease-in-out infinite;
         }
-
-        @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
+        .bar-1 { animation-delay: 0s; }
+        .bar-2 { animation-delay: 0.12s; }
+        .bar-3 { animation-delay: 0.24s; }
+        .bar-4 { animation-delay: 0.36s; }
+        .bar-5 { animation-delay: 0.48s; }
+        .avatar-name {
+          margin-top: var(--space-2);
+          font-size: var(--text-xl);
+          font-weight: var(--font-semibold);
+          color: var(--color-text-primary);
+          letter-spacing: 2px;
+          text-transform: uppercase;
         }
-
-        .avatar-error-overlay {
-          position: absolute;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.7);
+        .avatar-status-line {
+          color: var(--color-text-muted);
+          font-size: var(--text-sm);
+        }
+        .avatar-warning {
+          margin-top: var(--space-2);
+          max-width: 460px;
+          color: var(--color-warning);
+          background: var(--color-warning-bg);
+          border: 1px solid rgba(251, 191, 36, 0.2);
+          padding: var(--space-3) var(--space-4);
+          border-radius: var(--radius-md);
+          font-size: var(--text-sm);
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
-          gap: 12px;
-          color: #ff6b6b;
-          text-align: center;
-          padding: 24px;
-          z-index: 4;
+          gap: var(--space-2);
         }
-
         .avatar-retry-btn {
-          padding: 8px 20px;
-          background: transparent;
-          border: 1px solid #ff6b6b;
-          color: #ff6b6b;
-          border-radius: 8px;
+          padding: 8px 18px;
+          background: var(--color-bg-elevated);
+          border: 1px solid var(--color-border);
+          color: var(--color-text-primary);
+          border-radius: var(--radius-sm);
           cursor: pointer;
-          font-size: 14px;
+          font-size: var(--text-sm);
+          transition: background var(--transition-fast);
         }
-
         .avatar-retry-btn:hover {
-          background: #ff6b6b;
-          color: white;
+          background: var(--color-bg-hover);
+        }
+        @keyframes waveform {
+          0%, 100% { height: 12px; opacity: 0.7; }
+          50% { height: 40px; opacity: 1; }
+        }
+        @keyframes pulse-ring {
+          0% { box-shadow: 0 0 0 0 var(--color-accent-glow); }
+          70% { box-shadow: 0 0 0 20px rgba(91, 110, 245, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(91, 110, 245, 0); }
+        }
+        @media (max-width: 768px) {
+          .avatar-circle {
+            width: 160px;
+            height: 160px;
+          }
         }
       `}</style>
     </div>
