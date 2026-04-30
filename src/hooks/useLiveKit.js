@@ -185,6 +185,10 @@ const useLiveKit = (options = {}) => {
     }
   }, [isConnected, isMicActive]);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   endCallRef.current = endCall;
 
   useEffect(() => {
@@ -207,6 +211,7 @@ const useLiveKit = (options = {}) => {
     startCall,
     endCall,
     toggleMic,
+    clearError,
   };
 };
 
