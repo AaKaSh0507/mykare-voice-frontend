@@ -1,123 +1,121 @@
 # Mykare Voice AI — Frontend
+![React 18](https://img.shields.io/badge/React-18-61DAFB) ![Vite](https://img.shields.io/badge/Vite-Build%20Tool-646CFF) ![LiveKit](https://img.shields.io/badge/LiveKit-WebRTC-1f2937) ![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000)
 
-A production-grade React frontend for the Mykare Voice AI healthcare agent. This application lets patients talk to an AI receptionist directly in their browser using real-time voice powered by LiveKit. It connects to the `mykare-voice-backend` API for session management, appointment handling, and call summarisation.
+React frontend for TalkRx, a healthcare voice AI agent. Connects patients to an AI receptionist via real-time voice conversation with a live talking avatar.
 
----
+## Live Demo
 
-## Prerequisites
+🔗 Live App: https://talkrx.vercel.app  
+🔗 Backend API: https://mykare-api.fly.dev/health
 
-| Requirement | Version |
-|---|---|
-| **Node.js** | 18+ |
-| **npm** | 9+ (ships with Node 18) |
-| **Backend** | `mykare-voice-backend` must be running at `http://localhost:8000` |
+## Overview
 
----
+This frontend is a React single-page application built with Vite for fast local iteration and optimized production bundles. It uses the LiveKit browser SDK to manage low-latency, real-time voice sessions with the backend voice pipeline. Tavus CVI is embedded for lip-synced avatar rendering during active calls, with UI fallback behavior handled in the client. During each session, the app visualizes live tool calls and then transitions to a post-call summary screen populated from backend polling.
 
-## Local Setup
+## Tech Stack
 
-```bash
-# 1. Clone the repository
-git clone <repo-url> && cd mykare-voice-frontend
-
-# 2. Install dependencies
-npm install
-
-# 3. Create your local environment file
-cp .env.example .env
-
-# 4. (Optional) Edit .env to set VITE_LIVEKIT_URL if using a remote LiveKit server
-
-# 5. Start the development server
-npm run dev
-```
-
-The app will be available at **http://localhost:5173**.
-
----
-
-## Environment Variables
-
-All variables **must** be prefixed with `VITE_` for Vite to expose them to the browser.
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `VITE_BACKEND_URL` | No | `http://localhost:8000` | URL of the mykare-voice-backend API server. In development the Vite proxy at `/api` is used as a fallback. |
-| `VITE_LIVEKIT_URL` | No | *(returned by backend)* | URL of the LiveKit server for real-time audio/video. If left empty, the URL returned by the backend's `/token` endpoint is used. |
-
----
+| Layer | Technology | Purpose |
+| --- | --- | --- |
+| Framework | React 18 + Vite | SPA with fast HMR builds |
+| Voice | LiveKit Client SDK | WebRTC audio, data channel |
+| Avatar | Tavus CVI iframe | Talking avatar video stream |
+| HTTP | Axios | Backend API communication |
+| Deployment | Vercel | Static hosting + CDN |
 
 ## Project Structure
 
-```
-mykare-voice-frontend/
-├── .env.example            Environment variable template
-├── .gitignore              Git ignore rules
-├── index.html              HTML entry point (Vite SPA)
-├── vite.config.js          Vite config with /api proxy
-├── package.json            Dependencies & scripts
-├── README.md               This file
-└── src/
-    ├── main.jsx            React entry point — renders <App />
-    ├── App.jsx             Top-level component with health badge
-    ├── api.js              Axios-based API layer (all backend calls)
-    ├── index.css           Global CSS reset & base styles
-    ├── components/
-    │   ├── AvatarDisplay.jsx   Visual avatar for the AI agent
-    │   ├── CallControls.jsx    Start / mute / end call buttons
-    │   ├── CallSummary.jsx     Post-call summary view
-    │   └── ToolCallPanel.jsx   Real-time tool call display
-    └── hooks/
-        └── useLiveKit.js       Custom hook for LiveKit room management
+```text
+src/
+├── App.jsx                  # Root component, layout, state machine
+├── api.js                   # All backend API calls, polling logic
+├── index.css                # Global styles, CSS design tokens
+├── components/
+│   ├── AvatarDisplay.jsx    # Tavus iframe + animated fallback
+│   ├── CallControls.jsx     # Start/End/Mute buttons + name input
+│   ├── ToolCallPanel.jsx    # Real-time agent activity sidebar
+│   └── CallSummary.jsx      # Post-call summary screen
+└── hooks/
+    └── useLiveKit.js        # LiveKit room, mic, audio, events
 ```
 
----
+## Key Features
 
-## Components
+🎤 Voice Conversation  
+Browser microphone -> Deepgram STT -> GPT-4o-mini -> Cartesia TTS -> speaker. Full duplex, <3s latency.
 
-| Component | Description |
-|---|---|
-| **App** | Top-level layout. Renders the landing screen and health status badge. Will orchestrate all child components. |
-| **AvatarDisplay** | Animated visual representation of the AI voice agent. Shows speaking state. |
-| **CallControls** | Buttons for starting a call, toggling mute, and hanging up. Manages call lifecycle. |
-| **CallSummary** | Displays the post-call summary including appointment details and transcript. |
-| **ToolCallPanel** | Live feed of tool calls (e.g. appointment lookups) the AI agent makes during the conversation. |
+👤 Talking Avatar  
+Tavus CVI embedded via iframe. Lip-syncs with agent audio in real time. Falls back to animated waveform if Tavus is not configured.
 
----
+⚙️ Live Tool Call Panel  
+Every tool the agent calls (`fetch_slots`, `book_appointment` etc.) appears in real time via LiveKit data channel events. Shows status, message, and timestamp per tool call.
 
-## Custom Hooks
+📋 Call Summary  
+Auto-generated at end of call. Shows intent, appointments booked, messages exchanged, and timestamp. Polls backend for up to 10 seconds.
 
-| Hook | Description |
-|---|---|
-| **useLiveKit** | Manages LiveKit room connection, token acquisition, and audio track state. |
+## Local Development
 
----
+Prerequisites:
+- Node 18+
+- Backend running on port 8000
 
-## API Module (`src/api.js`)
-
-Single source of truth for all backend communication. Exports:
-
-| Function | Endpoint | Description |
-|---|---|---|
-| `checkHealth()` | `GET /health` | Backend health check (never throws) |
-| `getToken(name, room)` | `POST /token` | Get a LiveKit token |
-| `startSession(id, phone)` | `POST /session/start` | Start a new call session |
-| `getAppointments(phone)` | `GET /appointments/{phone}` | Fetch patient appointments |
-| `getSummary(sessionId)` | `GET /summary/{sessionId}` | Get call summary |
-| `pollSummary(sessionId, opts)` | *(polling wrapper)* | Retry `getSummary` until ready |
-
----
-
-## Production Build
+1. Clone and enter the repo.
 
 ```bash
-npm run build
+git clone https://github.com/AaKaSh0507/mykare-voice-frontend
+cd mykare-voice-frontend
 ```
 
-Output is written to the `dist/` directory. Serve with any static file server.
+2. Install dependencies.
 
----
+```bash
+npm install
+```
 
-## License
+3. Copy env template and fill in 4 variables.
 
-Private — internal use only.
+```bash
+cp .env.example .env
+```
+
+4. Start local dev server.
+
+```bash
+npm run dev
+```
+
+5. Open `http://localhost:5173`.
+
+## Environment Variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `VITE_BACKEND_URL` | Yes | Backend API URL |
+| `VITE_LIVEKIT_URL` | Yes | LiveKit WSS URL (same as backend) |
+| `VITE_TAVUS_API_KEY` | Yes | Tavus API key for avatar |
+| `VITE_TAVUS_REPLICA_ID` | Yes | Tavus persona replica ID |
+
+## Component Guide
+
+`AvatarDisplay` renders the Tavus CVI iframe and the visual speaking state in-call. It accepts avatar session URL and connection-state-driven display props from the parent. It also handles the fallback animated view when Tavus is unavailable.
+
+`CallControls` owns user input and primary call actions including start, end, and mute controls. It accepts callback props for lifecycle events and UI state flags for disabled/loading transitions. It is the main interaction surface before and during the call.
+
+`ToolCallPanel` displays streaming tool invocation events received during the session. It accepts a list of normalized tool event objects and renders status, message, and timestamps for each item. It is designed to provide transparent, real-time insight into agent actions.
+
+`CallSummary` renders the post-call result after session completion. It accepts summary payload data and loading/error flags while polling completes. It surfaces final intent, outcome details, and timeline metadata.
+
+`useLiveKit` is the session orchestration hook for room connection, track lifecycle, and event bindings. It accepts configuration and callback inputs needed to initialize and observe LiveKit state transitions. It returns connection state and handlers consumed by `App.jsx` and child components.
+
+## Deployment
+
+Deployed via Vercel. Any push to main branch triggers an automatic redeploy.
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy to production
+vercel --prod
+```
+
+Environment variables must be set in the Vercel dashboard under Project Settings -> Environment Variables.
